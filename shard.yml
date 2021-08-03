@@ -1,0 +1,7 @@
+name: RocksDB UI
+version: 0.0.1
+crystal: "~> 0.36.1"
+dependencies:
+  rocksdb:
+    github: maiha/rocksdb.cr
+    version: 1.0.0

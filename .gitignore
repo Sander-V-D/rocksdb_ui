@@ -1,0 +1,4 @@
+/lib
+/rocksdb_ui
+/rocksdb_ui.dwarf
+/shard.lock

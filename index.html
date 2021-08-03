@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8">
+    <title> RocksDB UI</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            /* table-layout: fixed; */
+            word-break: break-all;
+        }
+
+        body {
+            font-family: arial, sans-serif;
+        }
+
+        textarea {
+            width: 100%;
+            resize: vertical;
+            border: none;
+        }
+
+        td,
+        th {
+            border: 1px solid #000000;
+            text-align: left;
+            padding: 8px;
+            max-width: 50%;
+            word-break: keep-all;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+        tr:nth-child(even) textarea {
+            background-color: #dddddd;
+        }
+
+        .page-div {
+            display: flex;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        p {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Create</h2>
+    <form method="POST" action="/new">
+        <label>Key: <input name="key" id="key-input"></label>
+        <label>Value: <input name="val" id="val-input"></label>
+        <button type="submit">Create</button>
+    </form>
+
+    <h2>Find</h2>
+    <label>Prefix: <input id="prefix-input"></label>
+    <h3>Results:</h3>
+    <div class="page-div">
+        <button class="prev-page-button">
+            &lt; </button>
+        <p class="page-indicator">Page 1</p>
+        <button class="next-page-button">&gt;</button>
+    </div>
+    <table id="db-results">
+        <tr>
+            <th>key</th>
+            <th>value</th>
+            <th>action</th>
+        </tr>
+    </table>
+    <div class="page-div">
+        <button class="prev-page-button">
+            &lt; </button>
+        <p class="page-indicator">Page 1</p>
+        <button class="next-page-button">&gt;</button>
+    </div>
+    <script>
+        let currentPage = 0;
+        const resultsTable = document.getElementById("db-results");
+        const pageIndicators = document.getElementsByClassName("page-indicator");
+        const prefixInput = document.getElementById("prefix-input")
+        async function getResults() {
+            resultsTable.querySelectorAll(".result").forEach(el => el.remove());
+            for (const el of pageIndicators) { el.textContent = `Page ${currentPage + 1}`; };
+            const result = await fetch(`/query?${new URLSearchParams({ page: currentPage, prefix: prefixInput.value })}`);
+            const json_result = await result.json();
+            for (const entry of json_result) {
+                const row = document.createElement("tr");
+                row.classList.add("result")
+                const keyCol = document.createElement("td");
+                const keyEditor = document.createElement("textarea");
+                const valEditor = document.createElement("textarea");
+                keyEditor.addEventListener("input", () => { 
+                    if (delCol.childElementCount > 1) return;
+                    valEditor.disabled = true;
+                    const updateBut = document.createElement("button");
+                    const cancelBut = document.createElement("button");
+                    updateBut.textContent = "Update key";
+                    updateBut.addEventListener("click", () => {update_key(entry["key"], keyEditor.value); entry["key"] = keyEditor.value; updateBut.remove(); valEditor.disabled = false; cancelBut.remove();});
+                    cancelBut.textContent = "Cancel"
+                    cancelBut.addEventListener("click", () => {valEditor.value = entry["value"]; cancelBut.remove(); updateBut.remove(); valEditor.disabled = false;})
+                    delCol.append(updateBut, cancelBut);
+                });
+                keyEditor.textContent = entry["key"];
+                keyCol.append(keyEditor);
+                const valCol = document.createElement("td");
+                
+                const delCol = document.createElement("td");
+                valEditor.addEventListener("input", () => { 
+                    if (delCol.childElementCount > 1) return;
+                    keyEditor.disabled = true;
+                    const updateBut = document.createElement("button");
+                    const cancelBut = document.createElement("button");
+                    updateBut.textContent = "Update Value";
+                    updateBut.addEventListener("click", () => {update(entry["key"], valEditor.value); entry["value"] = valEditor.value; cancelBut.remove(); updateBut.remove(); keyEditor.disabled = false;});
+                    cancelBut.textContent = "Cancel"
+                    cancelBut.addEventListener("click", () => {valEditor.value = entry["value"]; cancelBut.remove(); updateBut.remove();keyEditor.disabled = false;})
+                    delCol.append(updateBut, cancelBut);
+                });
+                valEditor.textContent = entry["value"];
+                valCol.append(valEditor)
+                
+                const delBut = document.createElement("button");
+                delBut.addEventListener("click", remove.bind(delBut, entry["key"]));
+                delBut.textContent = "Delete";
+                delCol.append(delBut);
+                row.append(keyCol, valCol, delCol);
+                resultsTable.append(row);
+                valEditor.style.height = valEditor.scrollHeight + "px";
+            }
+        }
+
+        async function remove(key) {
+            if (!confirm(`Are you sure you want to delete key ${key}?`)) return;
+            result = await fetch(`/delete?${new URLSearchParams({ key })}`, {
+                method: 'DELETE'
+            });
+            getResults();
+            return result;
+        }
+        async function update(key, val) {
+            return await fetch(`/update?${new URLSearchParams({ key, val })}`, {
+                method: 'PUT'
+            });
+        }
+        async function update_key(old_key, new_key) {
+            return await fetch(`/update_key?${new URLSearchParams({ old_key, new_key })}`, {
+                method: 'PUT'
+            });
+        }
+
+        getResults();
+        for (const el of document.getElementsByClassName("prev-page-button")) {
+            el.addEventListener("click", e => {
+                if (currentPage > 0) {
+                    currentPage--;
+
+                    getResults()
+                }
+            });
+        };
+        for (const el of document.getElementsByClassName("next-page-button")) {
+            el.addEventListener("click", e => {
+                currentPage++;
+                getResults();
+            });
+        };
+        prefixInput.addEventListener("change", e => {
+            currentPage = 0;
+            getResults();
+        })
+    </script>
+</body>
