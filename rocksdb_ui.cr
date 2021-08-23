@@ -43,8 +43,8 @@ server = HTTP::Server.new do |context|
     puts
     puts "Updating keys: #{old_key} => #{new_key}"
     puts "Value: #{val}"
-    db.put(new_key, val)
     db.delete(old_key)
+    db.put(new_key, val)
   elsif context.request.path == "/delete" && context.request.method == "DELETE"
     key = context.request.query_params["key"]?
     next if key.nil?
